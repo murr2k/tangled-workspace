@@ -1,6 +1,8 @@
 # Tangled Workspace
 
-Development workspace for the Tangled game project, containing:
+Development workspace for [Tangled](https://tangled-game.com), a quantum-inspired strategy game where two players compete by coloring edges on graph structures. The game's outcomes are determined by quantum annealing simulation, making optimal play computationally intractable—and strategically fascinating.
+
+This workspace contains:
 
 - **snowdrop-tangled-agents** - Game player, strategies, and stats collection
 - **tangled-stats-dashboard** - Real-time web dashboard for monitoring games
