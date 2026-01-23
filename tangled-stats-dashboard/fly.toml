@@ -2,7 +2,7 @@
 # See https://fly.io/docs/reference/configuration/
 
 app = "tangled-stats"
-primary_region = "sea"  # Seattle
+primary_region = "sjc"  # San Jose
 
 [build]
 
