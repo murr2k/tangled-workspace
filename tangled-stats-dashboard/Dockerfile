@@ -17,5 +17,5 @@ USER appuser
 # Expose port
 EXPOSE 8080
 
-# Run with gunicorn for production WebSocket support
-CMD ["gunicorn", "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "--workers", "1", "--bind", "0.0.0.0:8080", "--timeout", "120", "--keep-alive", "5", "app:app"]
+# Run with gunicorn using gevent worker (simple-websocket, no compression)
+CMD ["gunicorn", "--worker-class", "gevent", "--workers", "1", "--bind", "0.0.0.0:8080", "--timeout", "120", "--keep-alive", "5", "app:app"]

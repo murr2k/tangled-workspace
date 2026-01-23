@@ -46,6 +46,10 @@ try_import_schemas()
 # ============================================================
 
 app = Flask(__name__, static_folder='static')
+
+# Disable WebSocket compression to support simple clients
+app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
+
 sock = Sock(app)
 
 # Configuration from environment
