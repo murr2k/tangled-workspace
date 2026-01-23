@@ -606,7 +606,7 @@
                             </div>
                             <div class="score-row">
                                 <span class="score-label">Std Dev</span>
-                                <span class="score-value">${scores.std !== null ? scores.std?.toFixed(3) : '-'}</span>
+                                <span class="score-value">${scores.std != null ? scores.std.toFixed(3) : '-'}</span>
                             </div>
                             <div class="score-row">
                                 <span class="score-label">Trend</span>
@@ -624,15 +624,15 @@
                         <div class="card-title">Opponent Model</div>
                         <div class="metrics-row">
                             <div>
-                                <div class="metric-value">${model.avg_entropy !== null ? model.avg_entropy?.toFixed(2) : '-'}</div>
+                                <div class="metric-value">${model.avg_entropy != null ? model.avg_entropy.toFixed(2) : '-'}</div>
                                 <div class="metric-label">Entropy</div>
                             </div>
                             <div>
-                                <div class="metric-value">${model.avg_top3_hit !== null ? (model.avg_top3_hit * 100)?.toFixed(1) + '%' : '-'}</div>
+                                <div class="metric-value">${model.avg_top3_hit != null ? (model.avg_top3_hit * 100).toFixed(1) + '%' : '-'}</div>
                                 <div class="metric-label">Top-3 Hit</div>
                             </div>
                             <div>
-                                <div class="metric-value">${model.avg_pred_accuracy !== null ? (model.avg_pred_accuracy * 100)?.toFixed(1) + '%' : '-'}</div>
+                                <div class="metric-value">${model.avg_pred_accuracy != null ? (model.avg_pred_accuracy * 100).toFixed(1) + '%' : '-'}</div>
                                 <div class="metric-label">Accuracy</div>
                             </div>
                         </div>
