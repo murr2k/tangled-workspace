@@ -3,6 +3,6 @@ flask==3.0.0
 flask-sock==0.7.0
 
 # Production server
-gunicorn==21.2.0
+gunicorn==22.0.0
 gevent==24.2.1
 gevent-websocket==0.10.1
