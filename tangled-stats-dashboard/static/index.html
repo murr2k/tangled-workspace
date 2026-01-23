@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tangled Live Stats</title>
+    <style>
+        :root {
+            --bg-dark: #0f0f1a;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-gray: #6b7280;
+            --accent-purple: #a855f7;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .wdl-bar {
+            height: 32px;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            margin: 16px 0;
+        }
+
+        .wdl-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: width 0.5s ease;
+        }
+
+        .wdl-win { background: var(--accent-green); }
+        .wdl-draw { background: var(--accent-gray); }
+        .wdl-loss { background: var(--accent-red); }
+
+        .message {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+
+        .message h2 {
+            margin-bottom: 8px;
+        }
+
+        #last-update {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TANGLED LIVE STATS</h1>
+            <div class="status">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <div id="content">
+            <div class="message">
+                <h2>Waiting for data...</h2>
+                <p>Start a game session with stats publishing enabled</p>
+            </div>
+        </div>
+
+        <div id="last-update"></div>
+    </div>
+
+    <script>
+        class StatsConnection {
+            constructor() {
+                this.ws = null;
+                this.reconnectDelay = 1000;
+                this.maxReconnectDelay = 30000;
+                this.lastUpdate = null;
+                this.connect();
+                this.startUpdateTimer();
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const url = `${protocol}//${window.location.host}/ws/subscribe`;
+
+                this.ws = new WebSocket(url);
+
+                this.ws.onopen = () => {
+                    this.reconnectDelay = 1000;
+                    this.updateStatus(true);
+                };
+
+                this.ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'stats_update') {
+                        this.lastUpdate = new Date();
+                        this.updateDashboard(data);
+                    }
+                };
+
+                this.ws.onclose = () => {
+                    this.updateStatus(false);
+                    this.scheduleReconnect();
+                };
+
+                this.ws.onerror = () => {
+                    this.ws.close();
+                };
+            }
+
+            scheduleReconnect() {
+                setTimeout(() => {
+                    this.reconnectDelay = Math.min(
+                        this.reconnectDelay * 2,
+                        this.maxReconnectDelay
+                    );
+                    this.connect();
+                }, this.reconnectDelay);
+            }
+
+            updateStatus(connected) {
+                const dot = document.getElementById('status-dot');
+                const text = document.getElementById('status-text');
+
+                if (connected) {
+                    dot.classList.add('connected');
+                    text.textContent = 'Connected';
+                } else {
+                    dot.classList.remove('connected');
+                    text.textContent = 'Reconnecting...';
+                }
+            }
+
+            startUpdateTimer() {
+                setInterval(() => {
+                    const el = document.getElementById('last-update');
+                    if (this.lastUpdate) {
+                        const seconds = Math.floor((new Date() - this.lastUpdate) / 1000);
+                        el.textContent = `Last update: ${seconds} seconds ago`;
+                    }
+                }, 1000);
+            }
+
+            updateDashboard(stats) {
+                const content = document.getElementById('content');
+
+                const session = stats.session || {};
+                const results = stats.results || {};
+                const scores = stats.scores || {};
+
+                const total = (results.wins || 0) + (results.draws || 0) + (results.losses || 0);
+                const winPct = total > 0 ? ((results.wins / total) * 100).toFixed(0) : 0;
+                const drawPct = total > 0 ? ((results.draws / total) * 100).toFixed(0) : 0;
+                const lossPct = total > 0 ? ((results.losses / total) * 100).toFixed(0) : 0;
+
+                content.innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${session.run_id || '-'}</div>
+                            <div class="stat-label">Run ID</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${session.completed_games || 0}/${session.planned_games || '?'}</div>
+                            <div class="stat-label">Games</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${scores.avg ? scores.avg.toFixed(3) : '-'}</div>
+                            <div class="stat-label">Avg Score</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="wdl-bar">
+                            <div class="wdl-segment wdl-win" style="width: ${winPct}%">${results.wins || 0}W</div>
+                            <div class="wdl-segment wdl-draw" style="width: ${drawPct}%">${results.draws || 0}D</div>
+                            <div class="wdl-segment wdl-loss" style="width: ${lossPct}%">${results.losses || 0}L</div>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${scores.median ? scores.median.toFixed(3) : '-'}</div>
+                            <div class="stat-label">Median</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${scores.min ? scores.min.toFixed(3) : '-'}</div>
+                            <div class="stat-label">Min</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${scores.max ? scores.max.toFixed(3) : '-'}</div>
+                            <div class="stat-label">Max</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            new StatsConnection();
+        });
+    </script>
+</body>
+</html>
