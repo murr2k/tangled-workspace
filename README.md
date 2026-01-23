@@ -13,12 +13,9 @@ This workspace contains:
 # Clone with submodules
 git clone --recursive https://github.com/murr2k/tangled-workspace.git
 cd tangled-workspace
-
-# Ensure main repo is on correct branch
-cd snowdrop-tangled-agents
-git checkout feature/dynamic-learning
-cd ..
 ```
+
+The submodule is configured to track the `feature/dynamic-learning` branch automatically.
 
 ## Structure
 

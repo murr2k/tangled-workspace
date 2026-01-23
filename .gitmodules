@@ -1,3 +1,4 @@
 [submodule "snowdrop-tangled-agents"]
 	path = snowdrop-tangled-agents
 	url = https://github.com/murr2k/snowdrop-tangled-agents.git
+	branch = feature/dynamic-learning
