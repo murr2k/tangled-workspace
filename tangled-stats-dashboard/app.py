@@ -7,69 +7,53 @@ Broadcasts to all connected subscriber clients (browsers)
 
 import os
 import sys
+import json
+import secrets
 from pathlib import Path
+from flask import Flask, send_from_directory
+from flask_sock import Sock
 
 # ============================================================
-# WORKSPACE VALIDATION
+# Optional Schema Import (for validation in development)
 # ============================================================
 
-def setup_imports():
-    """Set up imports from sibling submodule."""
+STATS_UPDATE_JSON_SCHEMA = None
+
+def try_import_schemas():
+    """Try to import schemas from sibling submodule (development only)."""
+    global STATS_UPDATE_JSON_SCHEMA
+
     repo_root = Path(__file__).parent.resolve()
     workspace_root = repo_root.parent
     main_repo = workspace_root / "snowdrop-tangled-agents"
 
-    if not main_repo.exists():
-        print("=" * 60)
-        print("ERROR: Main repo not found")
-        print("=" * 60)
-        print()
-        print(f"Expected: {main_repo}")
-        print()
-        print("Did you clone with --recursive?")
-        print("    git clone --recursive <workspace-repo-url>")
-        print()
-        print("Or initialize submodules:")
-        print("    git submodule update --init --recursive")
-        print("=" * 60)
-        sys.exit(1)
+    if main_repo.exists():
+        stats_module = main_repo / "snowdrop_tangled_agents" / "stats"
+        if stats_module.exists():
+            sys.path.insert(0, str(main_repo))
+            try:
+                from snowdrop_tangled_agents.stats.schemas import STATS_UPDATE_JSON_SCHEMA as schema
+                STATS_UPDATE_JSON_SCHEMA = schema
+                print(f"Loaded schemas from {main_repo}")
+            except ImportError as e:
+                print(f"Schema import failed: {e}")
 
-    # Check for stats module
-    stats_module = main_repo / "snowdrop_tangled_agents" / "stats"
-    if not stats_module.exists():
-        print("=" * 60)
-        print("ERROR: Stats module not found")
-        print("=" * 60)
-        print()
-        print("The submodule may be on the wrong branch.")
-        print()
-        print("Fix with:")
-        print(f"    cd {main_repo}")
-        print("    git checkout feature/dynamic-learning")
-        print("=" * 60)
-        sys.exit(1)
-
-    # Add to Python path
-    sys.path.insert(0, str(main_repo))
-
-
-# Run setup before other imports
-setup_imports()
+# Try to load schemas (optional - server works without them)
+try_import_schemas()
 
 # ============================================================
 # Application
 # ============================================================
 
-import json
-import secrets
-from flask import Flask, send_from_directory
-from flask_sock import Sock
-
 app = Flask(__name__, static_folder='static')
 sock = Sock(app)
 
-# Configuration
+# Configuration from environment
 PUBLISH_API_KEY = os.environ.get('PUBLISH_API_KEY', 'dev-key-change-me')
+
+# Warn if using default key in production
+if os.environ.get('FLY_APP_NAME') and PUBLISH_API_KEY == 'dev-key-change-me':
+    print("WARNING: Using default API key in production!")
 
 # State
 subscribers = set()
@@ -85,7 +69,11 @@ def index():
 @app.route('/health')
 def health():
     """Health check for Fly.io."""
-    return {'status': 'ok', 'subscribers': len(subscribers)}
+    return {
+        'status': 'ok',
+        'subscribers': len(subscribers),
+        'has_data': last_stats is not None
+    }
 
 
 @sock.route('/ws/publish')
@@ -100,6 +88,7 @@ def publish(ws):
             ws.send(json.dumps({'type': 'error', 'message': 'Invalid API key'}))
             return
         ws.send(json.dumps({'type': 'authenticated'}))
+        print("Publisher authenticated")
     except Exception as e:
         ws.send(json.dumps({'type': 'error', 'message': str(e)}))
         return
@@ -120,10 +109,13 @@ def publish(ws):
             if data.get('type') == 'stats_update':
                 last_stats = data
                 broadcast_to_subscribers(data)
+                print(f"Stats update broadcast to {len(subscribers)} subscribers")
 
         except Exception as e:
             print(f"Publisher error: {e}")
             break
+
+    print("Publisher disconnected")
 
 
 @sock.route('/ws/subscribe')
@@ -131,6 +123,7 @@ def subscribe(ws):
     """WebSocket endpoint for browser clients (subscribers)."""
     client_id = secrets.token_hex(8)
     subscribers.add(ws)
+    print(f"Subscriber {client_id} connected ({len(subscribers)} total)")
 
     try:
         ws.send(json.dumps({
@@ -152,9 +145,10 @@ def subscribe(ws):
                 ws.send(json.dumps({'type': 'pong'}))
 
     except Exception as e:
-        print(f"Subscriber {client_id} disconnected: {e}")
+        print(f"Subscriber {client_id} error: {e}")
     finally:
         subscribers.discard(ws)
+        print(f"Subscriber {client_id} disconnected ({len(subscribers)} remaining)")
 
 
 def broadcast_to_subscribers(data):
@@ -172,8 +166,18 @@ def broadcast_to_subscribers(data):
 
 
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8080))
+    debug = os.environ.get('FLASK_DEBUG', 'true').lower() == 'true'
+
     print()
+    print("=" * 50)
     print("Tangled Stats Dashboard")
-    print(f"Publisher API key: {PUBLISH_API_KEY[:8]}...")
+    print("=" * 50)
+    print(f"Port: {port}")
+    print(f"Debug: {debug}")
+    print(f"API key: {PUBLISH_API_KEY[:8]}...")
+    print(f"Schema validation: {'enabled' if STATS_UPDATE_JSON_SCHEMA else 'disabled'}")
+    print("=" * 50)
     print()
-    app.run(host='0.0.0.0', port=8080, debug=True)
+
+    app.run(host='0.0.0.0', port=port, debug=debug)

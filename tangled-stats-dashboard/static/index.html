@@ -12,6 +12,7 @@
             --accent-red: #ef4444;
             --accent-gray: #6b7280;
             --accent-purple: #a855f7;
+            --accent-blue: #3b82f6;
             --text-primary: #f1f5f9;
             --text-secondary: #94a3b8;
             --glass-border: rgba(255, 255, 255, 0.1);
@@ -32,7 +33,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -41,6 +42,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         h1 {
@@ -57,8 +60,8 @@
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: var(--accent-red);
         }
@@ -78,14 +81,22 @@
             backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border);
             border-radius: 16px;
-            padding: 24px;
+            padding: 20px;
             margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            letter-spacing: 0.05em;
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
             margin-bottom: 16px;
         }
 
@@ -103,33 +114,182 @@
             margin-bottom: 4px;
         }
 
+        .stat-value.positive { color: var(--accent-green); }
+        .stat-value.negative { color: var(--accent-red); }
+
         .stat-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-secondary);
             text-transform: uppercase;
+            letter-spacing: 0.03em;
         }
 
         .wdl-bar {
-            height: 32px;
+            height: 36px;
             border-radius: 8px;
             overflow: hidden;
             display: flex;
-            margin: 16px 0;
+            background: rgba(0,0,0,0.3);
         }
 
         .wdl-segment {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 600;
             transition: width 0.5s ease;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .wdl-segment span {
+            white-space: nowrap;
         }
 
         .wdl-win { background: var(--accent-green); }
         .wdl-draw { background: var(--accent-gray); }
         .wdl-loss { background: var(--accent-red); }
 
+        .wdl-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 700px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Petersen Graph */
+        .graph-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .graph-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .graph-edge {
+            stroke: #4b5563;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke 0.3s ease;
+        }
+
+        .graph-edge.fm { stroke: var(--accent-green); stroke-width: 4; }
+        .graph-edge.afm { stroke: var(--accent-purple); stroke-width: 4; }
+
+        .graph-vertex {
+            fill: var(--bg-dark);
+            stroke: var(--text-secondary);
+            stroke-width: 2;
+        }
+
+        .graph-vertex.us { fill: var(--accent-red); stroke: var(--accent-red); }
+        .graph-vertex.opp { fill: var(--accent-blue); stroke: var(--accent-blue); }
+        .graph-vertex.hub { fill: var(--accent-purple); stroke: var(--accent-purple); }
+
+        .graph-label {
+            fill: var(--text-primary);
+            font-size: 10px;
+            text-anchor: middle;
+            dominant-baseline: central;
+            font-weight: 600;
+        }
+
+        /* Recent Results */
+        .recent-results {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+
+        .result-badge {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .result-badge.W { background: var(--accent-green); }
+        .result-badge.D { background: var(--accent-gray); }
+        .result-badge.L { background: var(--accent-red); }
+
+        /* Score Stats */
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .score-row:last-child {
+            border-bottom: none;
+        }
+
+        .score-label {
+            color: var(--text-secondary);
+        }
+
+        .score-value {
+            font-weight: 600;
+            font-family: 'SF Mono', 'Consolas', monospace;
+        }
+
+        /* Model Metrics */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .metric-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* Game Info */
+        .game-info {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .game-score {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Message */
         .message {
             text-align: center;
             padding: 48px;
@@ -138,6 +298,7 @@
 
         .message h2 {
             margin-bottom: 8px;
+            color: var(--text-primary);
         }
 
         #last-update {
@@ -146,6 +307,11 @@
             color: var(--text-secondary);
             margin-top: 24px;
         }
+
+        /* Trend Arrow */
+        .trend-up { color: var(--accent-green); }
+        .trend-down { color: var(--accent-red); }
+        .trend-flat { color: var(--text-secondary); }
     </style>
 </head>
 <body>
@@ -169,6 +335,107 @@
     </div>
 
     <script>
+        // Petersen Graph Definition
+        const VERTICES = {
+            0: {x: 150, y: 60},   // inner top
+            1: {x: 220, y: 110},  // inner right
+            2: {x: 195, y: 185},  // inner bottom-right
+            3: {x: 105, y: 185},  // inner bottom-left
+            4: {x: 80,  y: 110},  // inner left
+            5: {x: 25,  y: 90},   // outer left (US)
+            6: {x: 150, y: 10},   // outer top (HUB)
+            7: {x: 275, y: 90},   // outer right (OPP)
+            8: {x: 235, y: 230},  // outer bottom-right
+            9: {x: 65,  y: 230},  // outer bottom-left
+        };
+
+        const EDGES = [
+            [0, 2], [0, 3], [0, 6], [1, 3], [1, 4],
+            [1, 7], [2, 4], [2, 8], [3, 9], [4, 5],
+            [5, 6], [5, 9], [6, 7], [7, 8], [8, 9]
+        ];
+
+        function createPetersenSVG(edgeStates = '') {
+            const padding = 5;
+            const width = 300;
+            const height = 250;
+
+            let svg = `<svg viewBox="${-padding} ${-padding} ${width + padding*2} ${height + padding*2}" width="${width}" height="${height}">`;
+
+            // Draw edges
+            EDGES.forEach((edge, i) => {
+                const [v1, v2] = edge;
+                const p1 = VERTICES[v1];
+                const p2 = VERTICES[v2];
+                const state = edgeStates[i] || '-';
+                let edgeClass = 'graph-edge';
+                if (state === 'G') edgeClass += ' fm';
+                else if (state === 'P') edgeClass += ' afm';
+
+                svg += `<line class="${edgeClass}" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"/>`;
+            });
+
+            // Draw vertices
+            Object.entries(VERTICES).forEach(([id, pos]) => {
+                let vertexClass = 'graph-vertex';
+                if (id === '5') vertexClass += ' us';
+                else if (id === '7') vertexClass += ' opp';
+                else if (id === '6') vertexClass += ' hub';
+
+                svg += `<circle class="${vertexClass}" cx="${pos.x}" cy="${pos.y}" r="12"/>`;
+                svg += `<text class="graph-label" x="${pos.x}" y="${pos.y}">${id}</text>`;
+            });
+
+            svg += '</svg>';
+            return svg;
+        }
+
+        function formatTrend(value) {
+            if (value === null || value === undefined) return '-';
+            const sign = value >= 0 ? '+' : '';
+            const cls = value > 0 ? 'trend-up' : (value < 0 ? 'trend-down' : 'trend-flat');
+            const arrow = value > 0 ? '&#9650;' : (value < 0 ? '&#9660;' : '&#9644;');
+            return `<span class="${cls}">${arrow} ${sign}${value.toFixed(3)}</span>`;
+        }
+
+        function formatScore(value) {
+            if (value === null || value === undefined) return '-';
+            const sign = value >= 0 ? '+' : '';
+            return sign + value.toFixed(3);
+        }
+
+        function formatETA(eta) {
+            if (!eta || !eta.estimated_end) return '-';
+            try {
+                const end = new Date(eta.estimated_end);
+                const now = new Date();
+                const diffMs = end - now;
+
+                if (diffMs < 0) return 'Complete';
+
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+                if (hours > 24) {
+                    const days = Math.floor(hours / 24);
+                    return `${days}d ${hours % 24}h`;
+                } else if (hours > 0) {
+                    return `${hours}h ${mins}m`;
+                } else {
+                    return `${mins}m`;
+                }
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        function renderRecentResults(recent5) {
+            if (!recent5) return '';
+            return recent5.split('').map(r =>
+                `<div class="result-badge ${r}">${r}</div>`
+            ).join('');
+        }
+
         class StatsConnection {
             constructor() {
                 this.ws = null;
@@ -236,7 +503,12 @@
                     const el = document.getElementById('last-update');
                     if (this.lastUpdate) {
                         const seconds = Math.floor((new Date() - this.lastUpdate) / 1000);
-                        el.textContent = `Last update: ${seconds} seconds ago`;
+                        if (seconds < 60) {
+                            el.textContent = `Last update: ${seconds}s ago`;
+                        } else {
+                            const mins = Math.floor(seconds / 60);
+                            el.textContent = `Last update: ${mins}m ${seconds % 60}s ago`;
+                        }
                     }
                 }, 1000);
             }
@@ -247,48 +519,122 @@
                 const session = stats.session || {};
                 const results = stats.results || {};
                 const scores = stats.scores || {};
+                const trends = stats.trends || {};
+                const model = stats.model || {};
+                const currentGame = stats.current_game;
+                const eta = stats.eta || {};
 
                 const total = (results.wins || 0) + (results.draws || 0) + (results.losses || 0);
-                const winPct = total > 0 ? ((results.wins / total) * 100).toFixed(0) : 0;
-                const drawPct = total > 0 ? ((results.draws / total) * 100).toFixed(0) : 0;
-                const lossPct = total > 0 ? ((results.losses / total) * 100).toFixed(0) : 0;
+                const winPct = total > 0 ? (results.wins / total) * 100 : 0;
+                const drawPct = total > 0 ? (results.draws / total) * 100 : 0;
+                const lossPct = total > 0 ? (results.losses / total) * 100 : 0;
+
+                const avgClass = scores.avg > 0 ? 'positive' : (scores.avg < 0 ? 'negative' : '');
 
                 content.innerHTML = `
+                    <!-- Top Stats Row -->
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-value">${session.run_id || '-'}</div>
-                            <div class="stat-label">Run ID</div>
+                            <div class="stat-value">${session.run_id !== null ? '#' + session.run_id : '-'}</div>
+                            <div class="stat-label">Run</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-value">${session.completed_games || 0}/${session.planned_games || '?'}</div>
                             <div class="stat-label">Games</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">${scores.avg ? scores.avg.toFixed(3) : '-'}</div>
+                            <div class="stat-value">${formatETA(eta)}</div>
+                            <div class="stat-label">ETA</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value ${avgClass}">${scores.avg !== undefined ? formatScore(scores.avg) : '-'}</div>
                             <div class="stat-label">Avg Score</div>
                         </div>
                     </div>
 
+                    <!-- W/D/L Bar -->
                     <div class="card">
+                        <div class="card-title">Results</div>
                         <div class="wdl-bar">
-                            <div class="wdl-segment wdl-win" style="width: ${winPct}%">${results.wins || 0}W</div>
-                            <div class="wdl-segment wdl-draw" style="width: ${drawPct}%">${results.draws || 0}D</div>
-                            <div class="wdl-segment wdl-loss" style="width: ${lossPct}%">${results.losses || 0}L</div>
+                            <div class="wdl-segment wdl-win" style="width: ${winPct}%">
+                                ${winPct >= 10 ? `<span>${results.wins || 0}W</span>` : ''}
+                            </div>
+                            <div class="wdl-segment wdl-draw" style="width: ${drawPct}%">
+                                ${drawPct >= 10 ? `<span>${results.draws || 0}D</span>` : ''}
+                            </div>
+                            <div class="wdl-segment wdl-loss" style="width: ${lossPct}%">
+                                ${lossPct >= 10 ? `<span>${results.losses || 0}L</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="wdl-labels">
+                            <span>${results.wins || 0} wins (${winPct.toFixed(0)}%)</span>
+                            <span>${results.draws || 0} draws (${drawPct.toFixed(0)}%)</span>
+                            <span>${results.losses || 0} losses (${lossPct.toFixed(0)}%)</span>
                         </div>
                     </div>
 
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value">${scores.median ? scores.median.toFixed(3) : '-'}</div>
-                            <div class="stat-label">Median</div>
+                    <!-- Two Column Layout -->
+                    <div class="two-col">
+                        <!-- Current Game -->
+                        <div class="card">
+                            <div class="card-title">Current Game</div>
+                            <div class="graph-container">
+                                ${createPetersenSVG(currentGame?.state || '')}
+                            </div>
+                            <div class="game-info">
+                                ${currentGame ? `
+                                    <div class="game-score">${formatScore(currentGame.score)}</div>
+                                    <div>Move ${currentGame.move_number || 0} | Game ${currentGame.game_number || '-'}</div>
+                                ` : '<div>No active game</div>'}
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${scores.min ? scores.min.toFixed(3) : '-'}</div>
-                            <div class="stat-label">Min</div>
+
+                        <!-- Score Stats -->
+                        <div class="card">
+                            <div class="card-title">Score Statistics</div>
+                            <div class="score-row">
+                                <span class="score-label">Average</span>
+                                <span class="score-value">${formatScore(scores.avg)}</span>
+                            </div>
+                            <div class="score-row">
+                                <span class="score-label">Median</span>
+                                <span class="score-value">${formatScore(scores.median)}</span>
+                            </div>
+                            <div class="score-row">
+                                <span class="score-label">Min / Max</span>
+                                <span class="score-value">${formatScore(scores.min)} / ${formatScore(scores.max)}</span>
+                            </div>
+                            <div class="score-row">
+                                <span class="score-label">Std Dev</span>
+                                <span class="score-value">${scores.std !== null ? scores.std?.toFixed(3) : '-'}</span>
+                            </div>
+                            <div class="score-row">
+                                <span class="score-label">Trend</span>
+                                <span class="score-value">${formatTrend(trends.score_trend)}</span>
+                            </div>
+                            <div class="card-title" style="margin-top: 16px;">Recent</div>
+                            <div class="recent-results">
+                                ${renderRecentResults(trends.recent_5)}
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${scores.max ? scores.max.toFixed(3) : '-'}</div>
-                            <div class="stat-label">Max</div>
+                    </div>
+
+                    <!-- Opponent Model Metrics -->
+                    <div class="card">
+                        <div class="card-title">Opponent Model</div>
+                        <div class="metrics-row">
+                            <div>
+                                <div class="metric-value">${model.avg_entropy !== null ? model.avg_entropy?.toFixed(2) : '-'}</div>
+                                <div class="metric-label">Entropy</div>
+                            </div>
+                            <div>
+                                <div class="metric-value">${model.avg_top3_hit !== null ? (model.avg_top3_hit * 100)?.toFixed(1) + '%' : '-'}</div>
+                                <div class="metric-label">Top-3 Hit</div>
+                            </div>
+                            <div>
+                                <div class="metric-value">${model.avg_pred_accuracy !== null ? (model.avg_pred_accuracy * 100)?.toFixed(1) + '%' : '-'}</div>
+                                <div class="metric-label">Accuracy</div>
+                            </div>
                         </div>
                     </div>
                 `;

@@ -14,7 +14,9 @@ Real-time web dashboard for monitoring Tangled game sessions via WebSocket.
 |------|---------|
 | `app.py` | Flask WebSocket server |
 | `static/index.html` | Single-page frontend (HTML + CSS + JS inline) |
+| `Dockerfile` | Production container image |
 | `fly.toml` | Fly.io deployment config |
+| `../.github/workflows/deploy-dashboard.yml` | GitHub Actions CI/CD |
 
 ## Schema Source
 
