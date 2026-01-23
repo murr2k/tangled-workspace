@@ -6,6 +6,8 @@ This workspace contains two related projects for the Tangled game.
 
 ```
 tangled-workspace/              (this repo)
+├── docs/
+│   └── TANGLED_GAME_WEB_MONITOR.md  # Dashboard implementation plan
 ├── snowdrop-tangled-agents/    (submodule - game player)
 └── tangled-stats-dashboard/    (dashboard)
 ```
@@ -52,6 +54,11 @@ git add . && git commit -m "message" && git push
 git add snowdrop-tangled-agents
 git commit -m "Update submodule"
 ```
+
+## Implementation Plan
+
+The detailed implementation plan for the live stats dashboard is at:
+- `docs/TANGLED_GAME_WEB_MONITOR.md` - Architecture, schemas, deployment steps
 
 ## Project-Specific Guidance
 

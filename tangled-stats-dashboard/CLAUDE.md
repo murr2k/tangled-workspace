@@ -15,19 +15,21 @@ Real-time web dashboard for monitoring Tangled game sessions via WebSocket.
 | `app.py` | Flask WebSocket server |
 | `static/index.html` | Single-page frontend (HTML + CSS + JS inline) |
 | `fly.toml` | Fly.io deployment config |
-| `upstream/` | Symlink/junction to main repo (for schema imports) |
 
 ## Schema Source
 
-Schemas are defined in the main repo and imported via the `upstream` link:
+Schemas are defined in the sibling submodule and imported via path manipulation:
 
 ```python
 import sys
-sys.path.insert(0, 'upstream')
+from pathlib import Path
+
+workspace_root = Path(__file__).parent.parent
+sys.path.insert(0, str(workspace_root / "snowdrop-tangled-agents"))
 from snowdrop_tangled_agents.stats.schemas import STATS_UPDATE_JSON_SCHEMA
 ```
 
-**Do not duplicate schema definitions here.** Always import from upstream.
+**Do not duplicate schema definitions here.** Always import from the game player submodule.
 
 ## Frontend Guidelines
 
@@ -48,9 +50,6 @@ The frontend must be zero-dependency vanilla JS:
 ## Development Commands
 
 ```bash
-# Set up upstream link (first time only)
-python scripts/setup_dev.py
-
 # Run locally
 python app.py
 
@@ -60,4 +59,4 @@ fly deploy
 
 ## Implementation Plan
 
-See `../snowdrop-tangled-agents/docs/TANGLED_GAME_WEB_MONITOR.md` for the full specification.
+See `../docs/TANGLED_GAME_WEB_MONITOR.md` for the full specification.
