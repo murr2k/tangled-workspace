@@ -432,6 +432,107 @@
                 transparent 10px
             );
         }
+
+        /* Score Bar - center-origin like game UI */
+        .score-bar-container {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+        }
+
+        .score-bar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.75rem;
+        }
+
+        .score-bar-label {
+            color: var(--text-secondary);
+        }
+
+        .score-bar-value {
+            font-weight: 600;
+            font-family: 'SF Mono', 'Consolas', monospace;
+        }
+
+        .score-bar-value.positive { color: #ef4444; }
+        .score-bar-value.negative { color: #3b82f6; }
+
+        .score-bar {
+            position: relative;
+            height: 24px;
+            background: #1e293b;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-bar-labels {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .score-bar-labels .red-label { color: #ef4444; }
+        .score-bar-labels .blue-label { color: #3b82f6; }
+
+        .score-bar-center {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--text-secondary);
+            z-index: 1;
+        }
+
+        .score-bar-fill {
+            position: absolute;
+            top: 2px;
+            bottom: 2px;
+            z-index: 0;
+        }
+
+        .score-bar-fill.positive {
+            background: #ef4444;
+            right: 50%;
+        }
+
+        .score-bar-fill.negative {
+            background: #3b82f6;
+            left: 50%;
+        }
+
+        /* Strategy/Opponent display */
+        .game-meta {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .game-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .game-meta-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -609,6 +710,59 @@
                    `<span class="move-color-${color}">${colorName}</span>` +
                    `<span class="move-score ${scoreClass}">${scoreStr}</span>` +
                    `<span class="move-time">${timeStr}</span>`;
+        }
+
+        function formatScoreBar(score) {
+            // Score bar: 0 is center, +1 full left (red), -1 full right (blue)
+            // Positive = our favor (red), Negative = opponent favor (blue)
+            if (score == null) return '';
+
+            const scoreStr = (score >= 0 ? '+' : '') + score.toFixed(3);
+            const scoreClass = score > 0 ? 'positive' : (score < 0 ? 'negative' : '');
+
+            // Calculate bar width (0-50% of half the bar)
+            const pct = Math.min(Math.abs(score), 1) * 50;
+            const fillStyle = score >= 0
+                ? `width: ${pct}%`  // positive: red bar extends left from center
+                : `width: ${pct}%`; // negative: blue bar extends right from center
+
+            return `
+                <div class="score-bar-container">
+                    <div class="score-bar-header">
+                        <span class="score-bar-label">Current Score:</span>
+                        <span class="score-bar-value ${scoreClass}">${scoreStr}</span>
+                    </div>
+                    <div class="score-bar">
+                        <div class="score-bar-labels">
+                            <span class="red-label">Red</span>
+                            <span class="blue-label">Blue</span>
+                        </div>
+                        <div class="score-bar-center"></div>
+                        <div class="score-bar-fill ${scoreClass}" style="${fillStyle}"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatGameMeta(session) {
+            if (!session) return '';
+            const strategy = session.strategy || '-';
+            const opponent = session.opponent || '-';
+            // Capitalize first letter of opponent name
+            const oppDisplay = opponent.charAt(0).toUpperCase() + opponent.slice(1);
+
+            return `
+                <div class="game-meta">
+                    <div class="game-meta-item">
+                        <span class="game-meta-label">Strategy:</span>
+                        <span class="game-meta-value">${strategy}</span>
+                    </div>
+                    <div class="game-meta-item">
+                        <span class="game-meta-label">vs</span>
+                        <span class="game-meta-value">${oppDisplay}</span>
+                    </div>
+                </div>
+            `;
         }
 
         class StatsConnection {
@@ -857,6 +1011,8 @@
                         <div class="move-display" id="move-display">
                             ${this.lastMove ? formatMoveDisplay(this.lastMove) : '<span style="color: var(--text-secondary);">Waiting for move...</span>'}
                         </div>
+                        ${formatScoreBar(this.lastMove?.score)}
+                        ${formatGameMeta(session)}
                     </div>
 
                     <!-- Two Column Layout -->
