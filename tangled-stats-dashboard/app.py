@@ -47,8 +47,9 @@ try_import_schemas()
 
 app = Flask(__name__, static_folder='static')
 
-# Disable WebSocket compression to support simple clients
-app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
+# Disable WebSocket compression and server-initiated pings
+# The client pushes data when it has updates - no need for server pings
+app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': None}
 
 sock = Sock(app)
 
@@ -62,6 +63,7 @@ if os.environ.get('FLY_APP_NAME') and PUBLISH_API_KEY == 'dev-key-change-me':
 # State
 subscribers = set()
 last_stats = None
+last_move = None  # Store last move for REST fallback
 
 
 @app.route('/')
@@ -78,6 +80,17 @@ def health():
         'subscribers': len(subscribers),
         'has_data': last_stats is not None
     }
+
+
+@app.route('/api/stats')
+def api_stats():
+    """REST endpoint to fetch current stats (fallback for WebSocket)."""
+    if last_move:
+        # Return the latest full state (which includes everything)
+        return last_move
+    elif last_stats:
+        return last_stats
+    return {'type': 'no_data', 'message': 'No stats available yet'}
 
 
 @sock.route('/ws/publish')
@@ -110,10 +123,29 @@ def publish(ws):
                 ws.send(json.dumps({'type': 'pong'}))
                 continue
 
-            if data.get('type') == 'stats_update':
-                last_stats = data
+            if data.get('type') == 'full_state':
+                global last_move, last_stats
+                last_move = data  # Store for REST fallback
+                # Also save as last_stats if it contains stats data
+                if data.get('results') or data.get('scores'):
+                    last_stats = data
                 broadcast_to_subscribers(data)
-                print(f"Stats update broadcast to {len(subscribers)} subscribers")
+                # Log compactly
+                move = data.get('move', {})
+                board = data.get('board_state', '')
+                vertex = data.get('vertex_state', '')
+                edges = data.get('edges_colored', 0)
+                if move:
+                    print(f"Edge {edges}/15: E{move.get('edge')}{move.get('color')} board={board} vertex={vertex}")
+                else:
+                    print(f"Stats update broadcast to {len(subscribers)} subscribers")
+
+            if data.get('type') == 'move_update':
+                # Legacy support
+                last_move = data
+                broadcast_to_subscribers(data)
+                move = data.get('move', {})
+                print(f"Move {move.get('number')}: E{move.get('edge')}{move.get('color')} -> {move.get('score', 0):+.3f}")
 
         except Exception as e:
             print(f"Publisher error: {e}")
@@ -136,6 +168,9 @@ def subscribe(ws):
             'client_id': client_id
         }))
 
+        # Send last known state to new subscriber
+        if last_move:
+            ws.send(json.dumps(last_move))
         if last_stats:
             ws.send(json.dumps(last_stats))
 

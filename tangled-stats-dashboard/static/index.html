@@ -71,6 +71,23 @@
             animation: pulse 2s infinite;
         }
 
+        #refresh-btn {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-left: 8px;
+            transition: all 0.2s;
+        }
+
+        #refresh-btn:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -185,14 +202,15 @@
         }
 
         .graph-edge {
-            stroke: #4b5563;
+            stroke: #6b7280;
             stroke-width: 3;
             stroke-linecap: round;
             transition: stroke 0.3s ease;
         }
 
-        .graph-edge.fm { stroke: var(--accent-green); stroke-width: 4; }
-        .graph-edge.afm { stroke: var(--accent-purple); stroke-width: 4; }
+        /* FM = Green, AFM = Purple (matches tangled-game.com) */
+        .graph-edge.fm { stroke: var(--accent-green); stroke-width: 5; }
+        .graph-edge.afm { stroke: var(--accent-purple); stroke-width: 5; }
 
         .graph-vertex {
             fill: var(--bg-dark);
@@ -200,9 +218,10 @@
             stroke-width: 2;
         }
 
-        .graph-vertex.us { fill: var(--accent-red); stroke: var(--accent-red); }
-        .graph-vertex.opp { fill: var(--accent-blue); stroke: var(--accent-blue); }
-        .graph-vertex.hub { fill: var(--accent-purple); stroke: var(--accent-purple); }
+        /* Vertex owned by red (player 1) - matches tangled-game.com */
+        .graph-vertex.red-owned { fill: #ef4444 !important; stroke: #ef4444 !important; }
+        /* Vertex owned by blue (player 2) - matches tangled-game.com */
+        .graph-vertex.blue-owned { fill: #3b82f6 !important; stroke: #3b82f6 !important; }
 
         .graph-label {
             fill: var(--text-primary);
@@ -312,6 +331,107 @@
         .trend-up { color: var(--accent-green); }
         .trend-down { color: var(--accent-red); }
         .trend-flat { color: var(--text-secondary); }
+
+        /* Move Display */
+        .move-display {
+            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            text-align: center;
+            letter-spacing: 0.02em;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .move-display .move-num {
+            color: var(--text-secondary);
+            margin-right: 8px;
+        }
+
+        .move-display .move-edge {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .move-display .move-color-G {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .move-display .move-color-P {
+            color: var(--accent-purple);
+            font-weight: 700;
+        }
+
+        .move-display .move-score {
+            margin-left: 12px;
+        }
+
+        .move-display .move-score.positive {
+            color: var(--accent-green);
+        }
+
+        .move-display .move-score.negative {
+            color: var(--accent-red);
+        }
+
+        .move-display .move-time {
+            color: var(--text-secondary);
+            margin-left: 12px;
+            font-size: 0.8rem;
+        }
+
+        .move-display .move-player-opp {
+            color: var(--accent-blue);
+        }
+
+        /* Game Legend */
+        .game-legend {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 1px;
+        }
+
+        .legend-line.solid {
+            background: var(--text-secondary);
+        }
+
+        .legend-line.dashed {
+            background: repeating-linear-gradient(
+                90deg,
+                var(--text-secondary) 0px,
+                var(--text-secondary) 6px,
+                transparent 6px,
+                transparent 10px
+            );
+        }
     </style>
 </head>
 <body>
@@ -321,14 +441,12 @@
             <div class="status">
                 <div class="status-dot" id="status-dot"></div>
                 <span id="status-text">Connecting...</span>
+                <button id="refresh-btn" onclick="window.statsConn?.pollStats()" title="Force refresh">↻</button>
             </div>
         </header>
 
         <div id="content">
-            <div class="message">
-                <h2>Waiting for data...</h2>
-                <p>Start a game session with stats publishing enabled</p>
-            </div>
+            <!-- Initial layout shown immediately -->
         </div>
 
         <div id="last-update"></div>
@@ -355,19 +473,48 @@
             [5, 6], [5, 9], [6, 7], [7, 8], [8, 9]
         ];
 
-        function createPetersenSVG(edgeStates = '') {
+        // Map each vertex to its connected edges
+        const VERTEX_EDGES = {};
+        EDGES.forEach((edge, i) => {
+            const [v1, v2] = edge;
+            if (!VERTEX_EDGES[v1]) VERTEX_EDGES[v1] = [];
+            if (!VERTEX_EDGES[v2]) VERTEX_EDGES[v2] = [];
+            VERTEX_EDGES[v1].push(i);
+            VERTEX_EDGES[v2].push(i);
+        });
+
+        function getVertexOwner(vertexId, edgeStates) {
+            // Count G (green/FM) and P (purple/AFM) edges connected to this vertex
+            const connectedEdges = VERTEX_EDGES[vertexId] || [];
+            let greenCount = 0;
+            let purpleCount = 0;
+
+            connectedEdges.forEach(edgeIdx => {
+                const state = edgeStates[edgeIdx];
+                if (state === 'G') greenCount++;
+                else if (state === 'P') purpleCount++;
+            });
+
+            // Vertex is owned by player with majority (2+ of 3 edges)
+            if (greenCount >= 2) return 'green';
+            if (purpleCount >= 2) return 'purple';
+            return null; // No owner yet
+        }
+
+        function createPetersenSVG(edgeStates = '', vertexStates = '') {
             const padding = 5;
             const width = 300;
             const height = 250;
 
             let svg = `<svg viewBox="${-padding} ${-padding} ${width + padding*2} ${height + padding*2}" width="${width}" height="${height}">`;
 
-            // Draw edges
+            // Draw edges - Green for FM, Purple for AFM (matches tangled-game.com)
             EDGES.forEach((edge, i) => {
                 const [v1, v2] = edge;
                 const p1 = VERTICES[v1];
                 const p2 = VERTICES[v2];
                 const state = edgeStates[i] || '-';
+
                 let edgeClass = 'graph-edge';
                 if (state === 'G') edgeClass += ' fm';
                 else if (state === 'P') edgeClass += ' afm';
@@ -375,12 +522,20 @@
                 svg += `<line class="${edgeClass}" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"/>`;
             });
 
-            // Draw vertices
+            // Draw vertices - use vertex_state if provided (R=red player 1, B=blue player 2)
+            console.log('Drawing vertices with states:', vertexStates);
             Object.entries(VERTICES).forEach(([id, pos]) => {
+                const idx = parseInt(id);
                 let vertexClass = 'graph-vertex';
-                if (id === '5') vertexClass += ' us';
-                else if (id === '7') vertexClass += ' opp';
-                else if (id === '6') vertexClass += ' hub';
+
+                // Use vertex_state data if available (read from game page)
+                if (vertexStates && vertexStates.length > idx) {
+                    const vState = vertexStates[idx];
+                    console.log(`V${idx}: state='${vState}'`);
+                    if (vState === 'R') vertexClass += ' red-owned';
+                    else if (vState === 'B') vertexClass += ' blue-owned';
+                }
+                // No fallback calculation - vertices only colored when game data provides it
 
                 svg += `<circle class="${vertexClass}" cx="${pos.x}" cy="${pos.y}" r="12"/>`;
                 svg += `<text class="graph-label" x="${pos.x}" y="${pos.y}">${id}</text>`;
@@ -436,12 +591,37 @@
             ).join('');
         }
 
+        function formatMoveDisplay(move) {
+            if (!move) return '<span style="color: var(--text-secondary);">Waiting for move...</span>';
+
+            const num = String(move.number || 0).padStart(2, ' ');
+            const edge = String(move.edge).padStart(2, ' ');
+            const color = move.color || '?';
+            const colorName = color === 'G' ? 'Green ' : 'Purple';
+            const score = move.score != null ? move.score : 0;
+            const scoreStr = (score >= 0 ? '+' : '') + score.toFixed(3);
+            const scoreClass = score > 0 ? 'positive' : (score < 0 ? 'negative' : '');
+            const timeStr = move.thinking_time != null ? `${move.thinking_time.toFixed(1)}s` : '    ';
+            const playerClass = move.player === 'opponent' ? 'move-player-opp' : '';
+
+            return `<span class="move-num ${playerClass}">Edge ${num}/15</span>` +
+                   `<span class="move-edge">E${edge}</span> ` +
+                   `<span class="move-color-${color}">${colorName}</span>` +
+                   `<span class="move-score ${scoreClass}">${scoreStr}</span>` +
+                   `<span class="move-time">${timeStr}</span>`;
+        }
+
         class StatsConnection {
             constructor() {
                 this.ws = null;
                 this.reconnectDelay = 1000;
                 this.maxReconnectDelay = 30000;
                 this.lastUpdate = null;
+                this.lastMove = null;
+                this.lastBoardState = '---------------';  // 15 unplayed edges
+                this.lastVertexState = '-----R-B--';      // V5=red (player 1), V7=blue (player 2)
+                this.hasReceivedData = false;
+                this.lastStats = null;
                 this.connect();
                 this.startUpdateTimer();
             }
@@ -459,10 +639,29 @@
 
                 this.ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'stats_update') {
+                    console.log('WS received:', data.type);
+
+                    if (data.type === 'full_state') {
+                        // Full state message - the ONLY message type we handle
                         this.lastUpdate = new Date();
-                        this.updateDashboard(data);
+                        this.hasReceivedData = true;
+
+                        // Update move/board state if present
+                        if (data.move) this.lastMove = data.move;
+                        if (data.board_state) this.lastBoardState = data.board_state;
+                        if (data.vertex_state) this.lastVertexState = data.vertex_state;
+
+                        // Merge any stats data into lastStats
+                        if (data.results || data.scores || data.session) {
+                            this.lastStats = {...this.lastStats, ...data};
+                        }
+
+                        console.log('full_state: board=' + this.lastBoardState + ' vertices=' + this.lastVertexState);
+
+                        // Always render full dashboard - use lastStats for any missing data
+                        this.updateDashboard(this.lastStats || {});
                     }
+                    // Ignore any other message types (connected, pong, etc.)
                 };
 
                 this.ws.onclose = () => {
@@ -499,6 +698,7 @@
             }
 
             startUpdateTimer() {
+                // Update "last update" display every second
                 setInterval(() => {
                     const el = document.getElementById('last-update');
                     if (this.lastUpdate) {
@@ -511,10 +711,88 @@
                         }
                     }
                 }, 1000);
+
+                // Fallback: poll REST endpoint every 5 seconds if no recent WebSocket data
+                setInterval(() => {
+                    const secondsSinceUpdate = this.lastUpdate
+                        ? Math.floor((new Date() - this.lastUpdate) / 1000)
+                        : 999;
+
+                    // Poll if no update in last 8 seconds (more aggressive fallback)
+                    if (secondsSinceUpdate > 8) {
+                        this.pollStats();
+                    }
+                }, 5000);
+            }
+
+            async pollStats() {
+                try {
+                    const response = await fetch('/api/stats');
+                    const data = await response.json();
+                    if (data.type === 'stats_update') {
+                        console.log('Fallback poll: got stats');
+                        this.lastUpdate = new Date();
+                        this.lastStats = data;
+                        this.hasReceivedData = true;
+                        // Check for embedded move data
+                        if (data.last_move) {
+                            this.lastMove = data.last_move.move;
+                            if (data.last_move.board_state) {
+                                this.lastBoardState = data.last_move.board_state;
+                            }
+                            if (data.last_move.vertex_state) {
+                                this.lastVertexState = data.last_move.vertex_state;
+                            }
+                        }
+                        this.updateDashboard(data);
+                    } else if (data.type === 'move_only' && data.last_move) {
+                        console.log('Fallback poll: got move only');
+                        this.lastUpdate = new Date();
+                        this.lastMove = data.last_move.move;
+                        if (data.last_move.board_state) {
+                            this.lastBoardState = data.last_move.board_state;
+                        }
+                        if (data.last_move.vertex_state) {
+                            this.lastVertexState = data.last_move.vertex_state;
+                        }
+                        this.hasReceivedData = true;
+                        this.showGameOnlyUI();
+                    }
+                } catch (e) {
+                    console.log('Fallback poll failed:', e);
+                }
+            }
+
+            countColoredEdges() {
+                // Count non-'-' characters in board state (G or P = colored edge)
+                if (!this.lastBoardState) return 0;
+                return (this.lastBoardState.match(/[GP]/g) || []).length;
+            }
+
+            updateMoveDisplay() {
+                const el = document.getElementById('move-display');
+                if (el && this.lastMove) {
+                    el.innerHTML = formatMoveDisplay(this.lastMove);
+                }
+                // Also update the graph if we have board state
+                const graphEl = document.getElementById('current-graph');
+                if (graphEl && this.lastBoardState) {
+                    graphEl.innerHTML = createPetersenSVG(this.lastBoardState, this.lastVertexState);
+                }
+                // Update score display
+                const scoreEl = document.getElementById('current-score');
+                if (scoreEl && this.lastMove && this.lastMove.score != null) {
+                    const score = this.lastMove.score;
+                    const scoreStr = (score >= 0 ? '+' : '') + score.toFixed(3);
+                    const scoreClass = score > 0 ? 'positive' : (score < 0 ? 'negative' : '');
+                    scoreEl.innerHTML = `<span class="stat-value ${scoreClass}">${scoreStr}</span>`;
+                }
             }
 
             updateDashboard(stats) {
                 const content = document.getElementById('content');
+                // Note: Don't clear move data on stats update - only clear when run completes
+                // The move data from move_update is more current than stats.current_game
 
                 const session = stats.session || {};
                 const results = stats.results || {};
@@ -535,12 +813,12 @@
                     <!-- Top Stats Row -->
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-value">${session.run_id !== null ? '#' + session.run_id : '-'}</div>
+                            <div class="stat-value">${session.run_id != null ? session.run_id : '-'}</div>
                             <div class="stat-label">Run</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">${session.completed_games || 0}/${session.planned_games || '?'}</div>
-                            <div class="stat-label">Games</div>
+                            <div class="stat-value">${session.current_game || 0}/${session.planned_games || '?'}</div>
+                            <div class="stat-label">Game</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-value">${formatETA(eta)}</div>
@@ -573,19 +851,32 @@
                         </div>
                     </div>
 
+                    <!-- Latest Move Display -->
+                    <div class="card">
+                        <div class="card-title">Latest Move</div>
+                        <div class="move-display" id="move-display">
+                            ${this.lastMove ? formatMoveDisplay(this.lastMove) : '<span style="color: var(--text-secondary);">Waiting for move...</span>'}
+                        </div>
+                    </div>
+
                     <!-- Two Column Layout -->
                     <div class="two-col">
                         <!-- Current Game -->
                         <div class="card">
                             <div class="card-title">Current Game</div>
-                            <div class="graph-container">
-                                ${createPetersenSVG(currentGame?.state || '')}
+                            <div class="graph-container" id="current-graph">
+                                ${createPetersenSVG(this.lastBoardState || currentGame?.state || '', this.lastVertexState || '')}
                             </div>
                             <div class="game-info">
-                                ${currentGame ? `
-                                    <div class="game-score">${formatScore(currentGame.score)}</div>
-                                    <div>Move ${currentGame.move_number || 0} | Game ${currentGame.game_number || '-'}</div>
+                                ${currentGame || this.lastMove ? `
+                                    <div id="current-score" class="game-score">${formatScore(this.lastMove?.score ?? currentGame?.score)}</div>
+                                    <div>Edges colored: ${this.countColoredEdges()}/15</div>
                                 ` : '<div>No active game</div>'}
+                            </div>
+                            <div class="game-legend">
+                                <span class="legend-item"><span class="legend-color" style="background: var(--accent-green);"></span> FM</span>
+                                <span class="legend-item"><span class="legend-color" style="background: var(--accent-purple);"></span> AFM</span>
+                                <span class="legend-item"><span class="legend-color" style="background: #6b7280;"></span> Unplayed</span>
                             </div>
                         </div>
 
@@ -643,7 +934,18 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-            new StatsConnection();
+            window.statsConn = new StatsConnection();
+            // Show empty dashboard immediately
+            window.statsConn.updateDashboard({
+                session: {},
+                results: {},
+                scores: {},
+                trends: {},
+                model: {},
+                eta: {}
+            });
+            // Also try to fetch stats immediately
+            window.statsConn.pollStats();
         });
     </script>
 </body>
