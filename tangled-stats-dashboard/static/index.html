@@ -443,14 +443,14 @@
 
         .score-bar-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             margin-bottom: 6px;
-            font-size: 0.75rem;
+            font-size: 0.85rem;
         }
 
         .score-bar-label {
-            color: var(--text-secondary);
+            display: none;
         }
 
         .score-bar-value {
@@ -661,7 +661,7 @@
         }
 
         function formatETA(eta) {
-            if (!eta || !eta.estimated_end) return '-';
+            if (!eta || !eta.estimated_end) return '--';
             try {
                 const end = new Date(eta.estimated_end);
                 const now = new Date();
@@ -669,19 +669,24 @@
 
                 if (diffMs < 0) return 'Complete';
 
+                // Show clock time (e.g., "3:45 PM") with remaining duration
+                const timeStr = end.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
                 const hours = Math.floor(diffMs / (1000 * 60 * 60));
                 const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
+                let remaining;
                 if (hours > 24) {
                     const days = Math.floor(hours / 24);
-                    return `${days}d ${hours % 24}h`;
+                    remaining = `${days}d ${hours % 24}h`;
                 } else if (hours > 0) {
-                    return `${hours}h ${mins}m`;
+                    remaining = `${hours}h ${mins}m`;
                 } else {
-                    return `${mins}m`;
+                    remaining = `${mins}m`;
                 }
+
+                return `${timeStr} (${remaining})`;
             } catch (e) {
-                return '-';
+                return '--';
             }
         }
 
@@ -696,19 +701,15 @@
             if (!move) return '<span style="color: var(--text-secondary);">Waiting for move...</span>';
 
             const num = String(move.number || 0).padStart(2, ' ');
-            const edge = String(move.edge).padStart(2, ' ');
+            const edge = move.edge;
             const color = move.color || '?';
             const colorName = color === 'G' ? 'Green ' : 'Purple';
-            const score = move.score != null ? move.score : 0;
-            const scoreStr = (score >= 0 ? '+' : '') + score.toFixed(3);
-            const scoreClass = score > 0 ? 'positive' : (score < 0 ? 'negative' : '');
             const timeStr = move.thinking_time != null ? `${move.thinking_time.toFixed(1)}s` : '    ';
             const playerClass = move.player === 'opponent' ? 'move-player-opp' : '';
 
             return `<span class="move-num ${playerClass}">Edge ${num}/15</span>` +
                    `<span class="move-edge">E${edge}</span> ` +
                    `<span class="move-color-${color}">${colorName}</span>` +
-                   `<span class="move-score ${scoreClass}">${scoreStr}</span>` +
                    `<span class="move-time">${timeStr}</span>`;
         }
 
