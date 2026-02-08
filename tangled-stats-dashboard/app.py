@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import secrets
+import requests
 from pathlib import Path
 from flask import Flask, send_from_directory
 from flask_sock import Sock
@@ -55,6 +56,7 @@ sock = Sock(app)
 
 # Configuration from environment
 PUBLISH_API_KEY = os.environ.get('PUBLISH_API_KEY', 'dev-key-change-me')
+SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL', None)
 
 # Warn if using default key in production
 if os.environ.get('FLY_APP_NAME') and PUBLISH_API_KEY == 'dev-key-change-me':
@@ -64,6 +66,7 @@ if os.environ.get('FLY_APP_NAME') and PUBLISH_API_KEY == 'dev-key-change-me':
 subscribers = set()
 last_stats = None
 last_move = None  # Store last move for REST fallback
+last_win_count = 0  # Track wins to detect new ones
 
 
 @app.route('/')
@@ -129,6 +132,8 @@ def publish(ws):
                 # Also save as last_stats if it contains stats data
                 if data.get('results') or data.get('scores'):
                     last_stats = data
+                    # Check for new wins and notify Slack
+                    check_for_win(data)
                 broadcast_to_subscribers(data)
                 # Log compactly
                 move = data.get('move', {})
@@ -190,6 +195,68 @@ def subscribe(ws):
         print(f"Subscriber {client_id} disconnected ({len(subscribers)} remaining)")
 
 
+def send_slack_notification(title, message, color='#36a64f', details=None):
+    """Send a message to Slack via webhook."""
+    if not SLACK_WEBHOOK_URL:
+        return
+
+    try:
+        payload = {
+            'attachments': [{
+                'color': color,
+                'title': title,
+                'text': message,
+            }]
+        }
+
+        if details:
+            payload['attachments'][0]['fields'] = [
+                {
+                    'title': k,
+                    'value': str(v),
+                    'short': True
+                }
+                for k, v in details.items()
+            ]
+
+        requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=5)
+    except Exception as e:
+        print(f"Slack notification failed: {e}")
+
+
+def check_for_win(data):
+    """Check if new wins were recorded and send notification."""
+    global last_win_count
+
+    results = data.get('results', {})
+    current_wins = results.get('wins', 0)
+
+    if current_wins > last_win_count:
+        new_wins = current_wins - last_win_count
+        last_win_count = current_wins
+
+        # Get additional context
+        session = data.get('session', {})
+        move = data.get('move', {})
+        board_state = data.get('board_state', '')
+
+        details = {
+            'Run': session.get('run_id', '-'),
+            'Game': f"{session.get('current_game', '?')}/{session.get('planned_games', '?')}",
+            'Total Wins': current_wins,
+            'Strategy': session.get('strategy', '-'),
+            'Opponent': session.get('opponent', '-'),
+        }
+
+        message = f"🎉 Won {new_wins} game{'s' if new_wins > 1 else ''}!"
+        send_slack_notification(
+            title='🎯 Tangled Win Alert',
+            message=message,
+            color='#36a64f',
+            details=details
+        )
+
+
 def broadcast_to_subscribers(data):
     """Send data to all connected subscribers."""
     message = json.dumps(data)
@@ -216,6 +283,7 @@ if __name__ == '__main__':
     print(f"Debug: {debug}")
     print(f"API key: {PUBLISH_API_KEY[:8]}...")
     print(f"Schema validation: {'enabled' if STATS_UPDATE_JSON_SCHEMA else 'disabled'}")
+    print(f"Slack notifications: {'enabled' if SLACK_WEBHOOK_URL else 'disabled'}")
     print("=" * 50)
     print()
 
