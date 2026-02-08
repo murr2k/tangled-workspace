@@ -51,46 +51,9 @@
             font-weight: 600;
         }
 
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        #last-update-header {
             font-size: 0.875rem;
             color: var(--text-secondary);
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--accent-red);
-        }
-
-        .status-dot.connected {
-            background: var(--accent-green);
-            animation: pulse 2s infinite;
-        }
-
-        #refresh-btn {
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-            border-radius: 4px;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-left: 8px;
-            transition: all 0.2s;
-        }
-
-        #refresh-btn:hover {
-            background: var(--bg-card);
-            color: var(--text-primary);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
         }
 
         .card {
@@ -539,18 +502,12 @@
     <div class="container">
         <header>
             <h1>TANGLED LIVE STATS</h1>
-            <div class="status">
-                <div class="status-dot" id="status-dot"></div>
-                <span id="status-text">Connecting...</span>
-                <button id="refresh-btn" onclick="window.statsConn?.pollStats()" title="Force refresh">↻</button>
-            </div>
+            <div id="last-update-header"></div>
         </header>
 
         <div id="content">
             <!-- Initial layout shown immediately -->
         </div>
-
-        <div id="last-update"></div>
     </div>
 
     <script>
@@ -789,7 +746,6 @@
 
                 this.ws.onopen = () => {
                     this.reconnectDelay = 1000;
-                    this.updateStatus(true);
                 };
 
                 this.ws.onmessage = (event) => {
@@ -820,7 +776,6 @@
                 };
 
                 this.ws.onclose = () => {
-                    this.updateStatus(false);
                     this.scheduleReconnect();
                 };
 
@@ -839,23 +794,11 @@
                 }, this.reconnectDelay);
             }
 
-            updateStatus(connected) {
-                const dot = document.getElementById('status-dot');
-                const text = document.getElementById('status-text');
-
-                if (connected) {
-                    dot.classList.add('connected');
-                    text.textContent = 'Connected';
-                } else {
-                    dot.classList.remove('connected');
-                    text.textContent = 'Reconnecting...';
-                }
-            }
 
             startUpdateTimer() {
                 // Update "last update" display every second
                 setInterval(() => {
-                    const el = document.getElementById('last-update');
+                    const el = document.getElementById('last-update-header');
                     if (this.lastUpdate) {
                         const seconds = Math.floor((new Date() - this.lastUpdate) / 1000);
                         if (seconds < 60) {
@@ -1092,16 +1035,7 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             window.statsConn = new StatsConnection();
-            // Show empty dashboard immediately
-            window.statsConn.updateDashboard({
-                session: {},
-                results: {},
-                scores: {},
-                trends: {},
-                model: {},
-                eta: {}
-            });
-            // Also try to fetch stats immediately
+            // Fetch stats immediately; dashboard will render once data arrives
             window.statsConn.pollStats();
         });
     </script>

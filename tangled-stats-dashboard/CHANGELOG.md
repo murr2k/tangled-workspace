@@ -2,6 +2,14 @@
 
 All notable changes to the Tangled Stats Dashboard.
 
+## [2026-02-07]
+
+### Changed
+- Dashboard now displays last known state indefinitely instead of showing "Reconnecting" status
+- Moved "Last update" timer to header (from bottom)
+- Removed connection status indicator and refresh button for cleaner UI
+- Dashboard fetches stats on page load and continuously updates with latest data
+
 ## [2026-01-24]
 
 ### Changed
