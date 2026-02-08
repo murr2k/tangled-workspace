@@ -37,4 +37,4 @@ primary_region = "sjc"  # San Jose
 
 # Scale to exactly 1 machine (WebSocket state isn't shared across machines)
 [deploy]
-  strategy = "immediate"
+  strategy = "rolling"
