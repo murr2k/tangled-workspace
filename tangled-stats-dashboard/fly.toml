@@ -5,6 +5,7 @@ app = "tangled-stats"
 primary_region = "sjc"  # San Jose
 
 [build]
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "8080"
