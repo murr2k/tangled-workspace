@@ -56,7 +56,7 @@ sock = Sock(app)
 
 # Configuration from environment
 PUBLISH_API_KEY = os.environ.get('PUBLISH_API_KEY', 'dev-key-change-me')
-SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL', None)
+TANGLED_GAME_SLACK_WEBHOOK_URL = os.environ.get('TANGLED_GAME_SLACK_WEBHOOK_URL', None)
 
 # Warn if using default key in production
 if os.environ.get('FLY_APP_NAME') and PUBLISH_API_KEY == 'dev-key-change-me':
@@ -197,7 +197,7 @@ def subscribe(ws):
 
 def send_slack_notification(title, message, color='#36a64f', details=None):
     """Send a message to Slack via webhook."""
-    if not SLACK_WEBHOOK_URL:
+    if not TANGLED_GAME_SLACK_WEBHOOK_URL:
         return
 
     try:
@@ -219,7 +219,7 @@ def send_slack_notification(title, message, color='#36a64f', details=None):
                 for k, v in details.items()
             ]
 
-        requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=5)
+        requests.post(TANGLED_GAME_SLACK_WEBHOOK_URL, json=payload, timeout=5)
     except Exception as e:
         print(f"Slack notification failed: {e}")
 
@@ -283,7 +283,7 @@ if __name__ == '__main__':
     print(f"Debug: {debug}")
     print(f"API key: {PUBLISH_API_KEY[:8]}...")
     print(f"Schema validation: {'enabled' if STATS_UPDATE_JSON_SCHEMA else 'disabled'}")
-    print(f"Slack notifications: {'enabled' if SLACK_WEBHOOK_URL else 'disabled'}")
+    print(f"Slack notifications: {'enabled' if TANGLED_GAME_SLACK_WEBHOOK_URL else 'disabled'}")
     print("=" * 50)
     print()
 
