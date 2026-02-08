@@ -10,6 +10,7 @@ import sys
 import json
 import secrets
 import requests
+from datetime import datetime
 from pathlib import Path
 from flask import Flask, send_from_directory
 from flask_sock import Sock
@@ -259,6 +260,10 @@ def check_for_win(data):
 
 def broadcast_to_subscribers(data):
     """Send data to all connected subscribers."""
+    # Add server timestamp if not already present
+    if 'server_timestamp' not in data:
+        data['server_timestamp'] = datetime.utcnow().isoformat() + 'Z'
+
     message = json.dumps(data)
     dead_sockets = set()
 

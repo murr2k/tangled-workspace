@@ -728,7 +728,7 @@
                 this.ws = null;
                 this.reconnectDelay = 1000;
                 this.maxReconnectDelay = 30000;
-                this.lastUpdate = null;
+                this.serverTimestamp = null;  // ISO string from server
                 this.lastMove = null;
                 this.lastBoardState = '---------------';  // 15 unplayed edges
                 this.lastVertexState = '-----R-B--';      // V5=red (player 1), V7=blue (player 2)
@@ -754,7 +754,10 @@
 
                     if (data.type === 'full_state') {
                         // Full state message - the ONLY message type we handle
-                        this.lastUpdate = new Date();
+                        // Store server timestamp for last update tracking
+                        if (data.server_timestamp) {
+                            this.serverTimestamp = data.server_timestamp;
+                        }
                         this.hasReceivedData = true;
 
                         // Update move/board state if present
@@ -796,11 +799,13 @@
 
 
             startUpdateTimer() {
-                // Update "last update" display every second
+                // Update "last update" display every second (based on server timestamp)
                 setInterval(() => {
                     const el = document.getElementById('last-update-header');
-                    if (this.lastUpdate) {
-                        const seconds = Math.floor((new Date() - this.lastUpdate) / 1000);
+                    if (this.serverTimestamp) {
+                        const serverTime = new Date(this.serverTimestamp);
+                        const now = new Date();
+                        const seconds = Math.floor((now - serverTime) / 1000);
                         if (seconds < 60) {
                             el.textContent = `Last update: ${seconds}s ago`;
                         } else {
@@ -827,9 +832,12 @@
                 try {
                     const response = await fetch('/api/stats');
                     const data = await response.json();
-                    if (data.type === 'stats_update') {
+                    if (data.type === 'stats_update' || data.type === 'full_state') {
                         console.log('Fallback poll: got stats');
-                        this.lastUpdate = new Date();
+                        // Store server timestamp
+                        if (data.server_timestamp) {
+                            this.serverTimestamp = data.server_timestamp;
+                        }
                         this.lastStats = data;
                         this.hasReceivedData = true;
                         // Check for embedded move data
@@ -845,7 +853,9 @@
                         this.updateDashboard(data);
                     } else if (data.type === 'move_only' && data.last_move) {
                         console.log('Fallback poll: got move only');
-                        this.lastUpdate = new Date();
+                        if (data.server_timestamp) {
+                            this.serverTimestamp = data.server_timestamp;
+                        }
                         this.lastMove = data.last_move.move;
                         if (data.last_move.board_state) {
                             this.lastBoardState = data.last_move.board_state;
