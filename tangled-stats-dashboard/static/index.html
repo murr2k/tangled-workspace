@@ -73,6 +73,108 @@
             letter-spacing: 0.05em;
         }
 
+        /* Sessions Summary Bar */
+        .sessions-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .sessions-count {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .sessions-count .count {
+            color: var(--accent-green);
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        /* Session Cards */
+        .session-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .session-card {
+            background: var(--bg-card);
+            border: 2px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .session-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .session-card.selected {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .session-run-id {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .session-progress {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-family: 'SF Mono', 'Consolas', monospace;
+        }
+
+        .session-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .session-meta-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .session-wdl {
+            display: flex;
+            gap: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            align-items: center;
+        }
+
+        .session-wdl .w { color: var(--accent-green); }
+        .session-wdl .d { color: var(--accent-gray); }
+        .session-wdl .l { color: var(--accent-red); }
+
+        .session-avg {
+            margin-left: auto;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .session-avg.positive { color: var(--accent-green); }
+        .session-avg.negative { color: var(--accent-red); }
+
+        /* Stats grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -171,7 +273,6 @@
             transition: stroke 0.3s ease;
         }
 
-        /* FM = Green, AFM = Purple (matches tangled-game.com) */
         .graph-edge.fm { stroke: var(--accent-green); stroke-width: 5; }
         .graph-edge.afm { stroke: var(--accent-purple); stroke-width: 5; }
 
@@ -181,9 +282,7 @@
             stroke-width: 2;
         }
 
-        /* Vertex owned by red (player 1) - matches tangled-game.com */
         .graph-vertex.red-owned { fill: #ef4444 !important; stroke: #ef4444 !important; }
-        /* Vertex owned by blue (player 2) - matches tangled-game.com */
         .graph-vertex.blue-owned { fill: #3b82f6 !important; stroke: #3b82f6 !important; }
 
         .graph-label {
@@ -376,27 +475,7 @@
             border-radius: 2px;
         }
 
-        .legend-line {
-            width: 20px;
-            height: 3px;
-            border-radius: 1px;
-        }
-
-        .legend-line.solid {
-            background: var(--text-secondary);
-        }
-
-        .legend-line.dashed {
-            background: repeating-linear-gradient(
-                90deg,
-                var(--text-secondary) 0px,
-                var(--text-secondary) 6px,
-                transparent 6px,
-                transparent 10px
-            );
-        }
-
-        /* Score Bar - center-origin like game UI */
+        /* Score Bar */
         .score-bar-container {
             margin-top: 12px;
             padding: 8px 12px;
@@ -513,16 +592,16 @@
     <script>
         // Petersen Graph Definition
         const VERTICES = {
-            0: {x: 150, y: 60},   // inner top
-            1: {x: 220, y: 110},  // inner right
-            2: {x: 195, y: 185},  // inner bottom-right
-            3: {x: 105, y: 185},  // inner bottom-left
-            4: {x: 80,  y: 110},  // inner left
-            5: {x: 25,  y: 90},   // outer left (US)
-            6: {x: 150, y: 10},   // outer top (HUB)
-            7: {x: 275, y: 90},   // outer right (OPP)
-            8: {x: 235, y: 230},  // outer bottom-right
-            9: {x: 65,  y: 230},  // outer bottom-left
+            0: {x: 150, y: 60},
+            1: {x: 220, y: 110},
+            2: {x: 195, y: 185},
+            3: {x: 105, y: 185},
+            4: {x: 80,  y: 110},
+            5: {x: 25,  y: 90},
+            6: {x: 150, y: 10},
+            7: {x: 275, y: 90},
+            8: {x: 235, y: 230},
+            9: {x: 65,  y: 230},
         };
 
         const EDGES = [
@@ -531,7 +610,6 @@
             [5, 6], [5, 9], [6, 7], [7, 8], [8, 9]
         ];
 
-        // Map each vertex to its connected edges
         const VERTEX_EDGES = {};
         EDGES.forEach((edge, i) => {
             const [v1, v2] = edge;
@@ -541,24 +619,6 @@
             VERTEX_EDGES[v2].push(i);
         });
 
-        function getVertexOwner(vertexId, edgeStates) {
-            // Count G (green/FM) and P (purple/AFM) edges connected to this vertex
-            const connectedEdges = VERTEX_EDGES[vertexId] || [];
-            let greenCount = 0;
-            let purpleCount = 0;
-
-            connectedEdges.forEach(edgeIdx => {
-                const state = edgeStates[edgeIdx];
-                if (state === 'G') greenCount++;
-                else if (state === 'P') purpleCount++;
-            });
-
-            // Vertex is owned by player with majority (2+ of 3 edges)
-            if (greenCount >= 2) return 'green';
-            if (purpleCount >= 2) return 'purple';
-            return null; // No owner yet
-        }
-
         function createPetersenSVG(edgeStates = '', vertexStates = '') {
             const padding = 5;
             const width = 300;
@@ -566,7 +626,6 @@
 
             let svg = `<svg viewBox="${-padding} ${-padding} ${width + padding*2} ${height + padding*2}" width="${width}" height="${height}">`;
 
-            // Draw edges - Green for FM, Purple for AFM (matches tangled-game.com)
             EDGES.forEach((edge, i) => {
                 const [v1, v2] = edge;
                 const p1 = VERTICES[v1];
@@ -580,20 +639,15 @@
                 svg += `<line class="${edgeClass}" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"/>`;
             });
 
-            // Draw vertices - use vertex_state if provided (R=red player 1, B=blue player 2)
-            console.log('Drawing vertices with states:', vertexStates);
             Object.entries(VERTICES).forEach(([id, pos]) => {
                 const idx = parseInt(id);
                 let vertexClass = 'graph-vertex';
 
-                // Use vertex_state data if available (read from game page)
                 if (vertexStates && vertexStates.length > idx) {
                     const vState = vertexStates[idx];
-                    console.log(`V${idx}: state='${vState}'`);
                     if (vState === 'R') vertexClass += ' red-owned';
                     else if (vState === 'B') vertexClass += ' blue-owned';
                 }
-                // No fallback calculation - vertices only colored when game data provides it
 
                 svg += `<circle class="${vertexClass}" cx="${pos.x}" cy="${pos.y}" r="12"/>`;
                 svg += `<text class="graph-label" x="${pos.x}" y="${pos.y}">${id}</text>`;
@@ -626,7 +680,6 @@
 
                 if (diffMs < 0) return 'Complete';
 
-                // Show clock time (e.g., "3:45 PM") with remaining duration
                 const timeStr = end.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
                 const hours = Math.floor(diffMs / (1000 * 60 * 60));
                 const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -671,18 +724,13 @@
         }
 
         function formatScoreBar(score) {
-            // Score bar: 0 is center, +1 full left (red), -1 full right (blue)
-            // Positive = our favor (red), Negative = opponent favor (blue)
             if (score == null) return '';
 
             const scoreStr = (score >= 0 ? '+' : '') + score.toFixed(3);
             const scoreClass = score > 0 ? 'positive' : (score < 0 ? 'negative' : '');
 
-            // Calculate bar width (0-50% of half the bar)
             const pct = Math.min(Math.abs(score), 1) * 50;
-            const fillStyle = score >= 0
-                ? `width: ${pct}%`  // positive: red bar extends left from center
-                : `width: ${pct}%`; // negative: blue bar extends right from center
+            const fillStyle = `width: ${pct}%`;
 
             return `
                 <div class="score-bar-container">
@@ -706,7 +754,6 @@
             if (!session) return '';
             const strategy = session.strategy || '-';
             const opponent = session.opponent || '-';
-            // Capitalize first letter of opponent name
             const oppDisplay = opponent.charAt(0).toUpperCase() + opponent.slice(1);
 
             return `
@@ -728,12 +775,10 @@
                 this.ws = null;
                 this.reconnectDelay = 1000;
                 this.maxReconnectDelay = 30000;
-                this.serverTimestamp = null;  // ISO string from server
-                this.lastMove = null;
-                this.lastBoardState = '---------------';  // 15 unplayed edges
-                this.lastVertexState = '-----R-B--';      // V5=red (player 1), V7=blue (player 2)
+                this.serverTimestamp = null;
+                this.sessions = {};          // {run_id: full_state_data}
+                this.selectedRunId = null;    // Which session to show in detail
                 this.hasReceivedData = false;
-                this.lastStats = null;
                 this.connect();
                 this.startUpdateTimer();
             }
@@ -750,32 +795,37 @@
 
                 this.ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    console.log('WS received:', data.type);
 
-                    if (data.type === 'full_state') {
-                        // Full state message - the ONLY message type we handle
-                        // Store server timestamp for last update tracking
+                    if (data.type === 'multi_state') {
                         if (data.server_timestamp) {
                             this.serverTimestamp = data.server_timestamp;
                         }
                         this.hasReceivedData = true;
+                        this.sessions = data.sessions || {};
 
-                        // Update move/board state if present
-                        if (data.move) this.lastMove = data.move;
-                        if (data.board_state) this.lastBoardState = data.board_state;
-                        if (data.vertex_state) this.lastVertexState = data.vertex_state;
-
-                        // Merge any stats data into lastStats
-                        if (data.results || data.scores || data.session) {
-                            this.lastStats = {...this.lastStats, ...data};
+                        // Auto-select: pick most recently updated if current selection gone
+                        const runIds = Object.keys(this.sessions);
+                        if (runIds.length === 0) {
+                            this.selectedRunId = null;
+                        } else if (!this.selectedRunId || !this.sessions[this.selectedRunId]) {
+                            // Select the session with the highest run_id (most recent)
+                            this.selectedRunId = runIds.sort((a, b) => Number(b) - Number(a))[0];
                         }
 
-                        console.log('full_state: board=' + this.lastBoardState + ' vertices=' + this.lastVertexState);
-
-                        // Always render full dashboard - use lastStats for any missing data
-                        this.updateDashboard(this.lastStats || {});
+                        this.updateDashboard();
                     }
-                    // Ignore any other message types (connected, pong, etc.)
+
+                    // Backward compat: handle single full_state from older server
+                    if (data.type === 'full_state') {
+                        if (data.server_timestamp) {
+                            this.serverTimestamp = data.server_timestamp;
+                        }
+                        this.hasReceivedData = true;
+                        const runId = data.session?.run_id || 'unknown';
+                        this.sessions[String(runId)] = data;
+                        if (!this.selectedRunId) this.selectedRunId = String(runId);
+                        this.updateDashboard();
+                    }
                 };
 
                 this.ws.onclose = () => {
@@ -797,9 +847,12 @@
                 }, this.reconnectDelay);
             }
 
+            selectSession(runId) {
+                this.selectedRunId = String(runId);
+                this.updateDashboard();
+            }
 
             startUpdateTimer() {
-                // Update "last update" display every second (based on server timestamp)
                 setInterval(() => {
                     const el = document.getElementById('last-update-header');
                     if (this.serverTimestamp) {
@@ -815,13 +868,13 @@
                     }
                 }, 1000);
 
-                // Fallback: poll REST endpoint every 5 seconds if no recent WebSocket data
+                // Fallback REST polling
                 setInterval(() => {
-                    const secondsSinceUpdate = this.lastUpdate
-                        ? Math.floor((new Date() - this.lastUpdate) / 1000)
-                        : 999;
-
-                    // Poll if no update in last 8 seconds (more aggressive fallback)
+                    if (!this.serverTimestamp) {
+                        this.pollStats();
+                        return;
+                    }
+                    const secondsSinceUpdate = Math.floor((new Date() - new Date(this.serverTimestamp)) / 1000);
                     if (secondsSinceUpdate > 8) {
                         this.pollStats();
                     }
@@ -832,83 +885,101 @@
                 try {
                     const response = await fetch('/api/stats');
                     const data = await response.json();
-                    if (data.type === 'stats_update' || data.type === 'full_state') {
-                        console.log('Fallback poll: got stats');
-                        // Store server timestamp
-                        if (data.server_timestamp) {
-                            this.serverTimestamp = data.server_timestamp;
-                        }
-                        this.lastStats = data;
+                    if (data.type === 'multi_state') {
+                        if (data.server_timestamp) this.serverTimestamp = data.server_timestamp;
+                        this.sessions = data.sessions || {};
                         this.hasReceivedData = true;
-                        // Check for embedded move data
-                        if (data.last_move) {
-                            this.lastMove = data.last_move.move;
-                            if (data.last_move.board_state) {
-                                this.lastBoardState = data.last_move.board_state;
-                            }
-                            if (data.last_move.vertex_state) {
-                                this.lastVertexState = data.last_move.vertex_state;
-                            }
+                        const runIds = Object.keys(this.sessions);
+                        if (runIds.length > 0 && (!this.selectedRunId || !this.sessions[this.selectedRunId])) {
+                            this.selectedRunId = runIds.sort((a, b) => Number(b) - Number(a))[0];
                         }
-                        this.updateDashboard(data);
-                    } else if (data.type === 'move_only' && data.last_move) {
-                        console.log('Fallback poll: got move only');
-                        if (data.server_timestamp) {
-                            this.serverTimestamp = data.server_timestamp;
-                        }
-                        this.lastMove = data.last_move.move;
-                        if (data.last_move.board_state) {
-                            this.lastBoardState = data.last_move.board_state;
-                        }
-                        if (data.last_move.vertex_state) {
-                            this.lastVertexState = data.last_move.vertex_state;
-                        }
-                        this.hasReceivedData = true;
-                        this.showGameOnlyUI();
+                        this.updateDashboard();
                     }
                 } catch (e) {
                     console.log('Fallback poll failed:', e);
                 }
             }
 
-            countColoredEdges() {
-                // Count non-'-' characters in board state (G or P = colored edge)
-                if (!this.lastBoardState) return 0;
-                return (this.lastBoardState.match(/[GP]/g) || []).length;
+            renderSessionCards() {
+                const runIds = Object.keys(this.sessions).sort((a, b) => Number(b) - Number(a));
+                if (runIds.length === 0) return '';
+
+                return runIds.map(runId => {
+                    const data = this.sessions[runId];
+                    const session = data.session || {};
+                    const results = data.results || {};
+                    const scores = data.scores || {};
+                    const selected = runId === this.selectedRunId ? 'selected' : '';
+                    const opponent = session.opponent || '-';
+                    const oppDisplay = opponent.charAt(0).toUpperCase() + opponent.slice(1);
+                    const avgClass = scores.avg > 0 ? 'positive' : (scores.avg < 0 ? 'negative' : '');
+
+                    return `
+                        <div class="session-card ${selected}" onclick="window.statsConn.selectSession('${runId}')">
+                            <div class="session-header">
+                                <span class="session-run-id">Run ${runId}</span>
+                                <span class="session-progress">${session.completed_games || 0}/${session.planned_games || '?'}</span>
+                            </div>
+                            <div class="session-meta">
+                                <span><span class="session-meta-value">${session.strategy || '-'}</span></span>
+                                <span>vs <span class="session-meta-value">${oppDisplay}</span></span>
+                            </div>
+                            <div class="session-wdl">
+                                <span class="w">${results.wins || 0}W</span>
+                                <span class="d">${results.draws || 0}D</span>
+                                <span class="l">${results.losses || 0}L</span>
+                                <span class="session-avg ${avgClass}">${scores.avg != null ? formatScore(scores.avg) : '-'}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             }
 
-            updateMoveDisplay() {
-                const el = document.getElementById('move-display');
-                if (el && this.lastMove) {
-                    el.innerHTML = formatMoveDisplay(this.lastMove);
-                }
-                // Also update the graph if we have board state
-                const graphEl = document.getElementById('current-graph');
-                if (graphEl && this.lastBoardState) {
-                    graphEl.innerHTML = createPetersenSVG(this.lastBoardState, this.lastVertexState);
-                }
-                // Update score display
-                const scoreEl = document.getElementById('current-score');
-                if (scoreEl && this.lastMove && this.lastMove.score != null) {
-                    const score = this.lastMove.score;
-                    const scoreStr = (score >= 0 ? '+' : '') + score.toFixed(3);
-                    const scoreClass = score > 0 ? 'positive' : (score < 0 ? 'negative' : '');
-                    scoreEl.innerHTML = `<span class="stat-value ${scoreClass}">${scoreStr}</span>`;
-                }
-            }
-
-            updateDashboard(stats) {
+            updateDashboard() {
                 const content = document.getElementById('content');
-                // Note: Don't clear move data on stats update - only clear when run completes
-                // The move data from move_update is more current than stats.current_game
+                const runIds = Object.keys(this.sessions);
+                const sessionCount = runIds.length;
 
+                if (sessionCount === 0) {
+                    content.innerHTML = `
+                        <div class="message">
+                            <h2>No Active Sessions</h2>
+                            <p>Waiting for a game runner to connect...</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Sessions summary bar + cards
+                const sessionsHtml = `
+                    <div class="sessions-bar">
+                        <div class="sessions-count"><span class="count">${sessionCount}</span> Active Session${sessionCount !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div class="session-cards">
+                        ${this.renderSessionCards()}
+                    </div>
+                `;
+
+                // Detail view for selected session
+                const selectedData = this.sessions[this.selectedRunId];
+                let detailHtml = '';
+                if (selectedData) {
+                    detailHtml = this.renderSessionDetail(selectedData);
+                }
+
+                content.innerHTML = sessionsHtml + detailHtml;
+            }
+
+            renderSessionDetail(stats) {
                 const session = stats.session || {};
                 const results = stats.results || {};
                 const scores = stats.scores || {};
                 const trends = stats.trends || {};
                 const model = stats.model || {};
-                const currentGame = stats.current_game;
                 const eta = stats.eta || {};
+                const move = stats.move || null;
+                const boardState = stats.board_state || '---------------';
+                const vertexState = stats.vertex_state || '----------';
 
                 const total = (results.wins || 0) + (results.draws || 0) + (results.losses || 0);
                 const winPct = total > 0 ? (results.wins / total) * 100 : 0;
@@ -916,8 +987,9 @@
                 const lossPct = total > 0 ? (results.losses / total) * 100 : 0;
 
                 const avgClass = scores.avg > 0 ? 'positive' : (scores.avg < 0 ? 'negative' : '');
+                const edgesColored = (boardState.match(/[GP]/g) || []).length;
 
-                content.innerHTML = `
+                return `
                     <!-- Top Stats Row -->
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -962,10 +1034,10 @@
                     <!-- Latest Move Display -->
                     <div class="card">
                         <div class="card-title">Latest Move</div>
-                        <div class="move-display" id="move-display">
-                            ${this.lastMove ? formatMoveDisplay(this.lastMove) : '<span style="color: var(--text-secondary);">Waiting for move...</span>'}
+                        <div class="move-display">
+                            ${move ? formatMoveDisplay(move) : '<span style="color: var(--text-secondary);">Waiting for move...</span>'}
                         </div>
-                        ${formatScoreBar(this.lastMove?.score)}
+                        ${formatScoreBar(move?.score)}
                         ${formatGameMeta(session)}
                     </div>
 
@@ -974,13 +1046,13 @@
                         <!-- Current Game -->
                         <div class="card">
                             <div class="card-title">Current Game</div>
-                            <div class="graph-container" id="current-graph">
-                                ${createPetersenSVG(this.lastBoardState || currentGame?.state || '', this.lastVertexState || '')}
+                            <div class="graph-container">
+                                ${createPetersenSVG(boardState, vertexState)}
                             </div>
                             <div class="game-info">
-                                ${currentGame || this.lastMove ? `
-                                    <div id="current-score" class="game-score">${formatScore(this.lastMove?.score ?? currentGame?.score)}</div>
-                                    <div>Edges colored: ${this.countColoredEdges()}/15</div>
+                                ${move ? `
+                                    <div class="game-score">${formatScore(move?.score)}</div>
+                                    <div>Edges colored: ${edgesColored}/15</div>
                                 ` : '<div>No active game</div>'}
                             </div>
                             <div class="game-legend">
@@ -1045,7 +1117,6 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             window.statsConn = new StatsConnection();
-            // Fetch stats immediately; dashboard will render once data arrives
             window.statsConn.pollStats();
         });
     </script>

@@ -1,8 +1,9 @@
 """
 Tangled Stats Dashboard - WebSocket Relay Server
 
-Accepts stats from authenticated publisher (game runner)
+Accepts stats from authenticated publishers (game runners)
 Broadcasts to all connected subscriber clients (browsers)
+Supports multiple concurrent game sessions tracked by run_id.
 """
 
 import os
@@ -58,16 +59,38 @@ sock = Sock(app)
 # Configuration from environment
 PUBLISH_API_KEY = os.environ.get('PUBLISH_API_KEY', 'dev-key-change-me')
 TANGLED_GAME_SLACK_WEBHOOK_URL = os.environ.get('TANGLED_GAME_SLACK_WEBHOOK_URL', None)
+SESSION_TIMEOUT = 600  # Remove sessions with no update for 10 minutes
 
 # Warn if using default key in production
 if os.environ.get('FLY_APP_NAME') and PUBLISH_API_KEY == 'dev-key-change-me':
     print("WARNING: Using default API key in production!")
 
-# State
+# State - per-session tracking
 subscribers = set()
-last_stats = None
-last_move = None  # Store last move for REST fallback
-last_win_count = 0  # Track wins to detect new ones
+sessions = {}  # {run_id: {'data': full_state, 'last_win_count': int, 'last_seen': datetime}}
+
+
+def cleanup_stale_sessions():
+    """Remove sessions that haven't sent an update within SESSION_TIMEOUT."""
+    now = datetime.utcnow()
+    stale = [
+        rid for rid, s in sessions.items()
+        if (now - s['last_seen']).total_seconds() > SESSION_TIMEOUT
+    ]
+    for rid in stale:
+        del sessions[rid]
+        print(f"Session {rid} timed out and removed")
+
+
+def build_multi_state():
+    """Build a multi_state message from all active sessions."""
+    cleanup_stale_sessions()
+    return {
+        'type': 'multi_state',
+        'server_timestamp': datetime.utcnow().isoformat() + 'Z',
+        'active_sessions': len(sessions),
+        'sessions': {str(rid): s['data'] for rid, s in sessions.items()},
+    }
 
 
 @app.route('/')
@@ -79,28 +102,27 @@ def index():
 @app.route('/health')
 def health():
     """Health check for Fly.io."""
+    cleanup_stale_sessions()
     return {
         'status': 'ok',
         'subscribers': len(subscribers),
-        'has_data': last_stats is not None
+        'active_sessions': len(sessions),
+        'has_data': len(sessions) > 0
     }
 
 
 @app.route('/api/stats')
 def api_stats():
     """REST endpoint to fetch current stats (fallback for WebSocket)."""
-    if last_move:
-        # Return the latest full state (which includes everything)
-        return last_move
-    elif last_stats:
-        return last_stats
-    return {'type': 'no_data', 'message': 'No stats available yet'}
+    state = build_multi_state()
+    if state['active_sessions'] == 0:
+        return {'type': 'no_data', 'message': 'No stats available yet'}
+    return state
 
 
 @sock.route('/ws/publish')
 def publish(ws):
     """WebSocket endpoint for the game runner (publisher)."""
-    global last_stats
 
     # Authenticate
     try:
@@ -128,27 +150,37 @@ def publish(ws):
                 continue
 
             if data.get('type') == 'full_state':
-                global last_move, last_stats
-                last_move = data  # Store for REST fallback
-                # Also save as last_stats if it contains stats data
-                if data.get('results') or data.get('scores'):
-                    last_stats = data
-                    # Check for new wins and notify Slack
-                    check_for_win(data)
-                broadcast_to_subscribers(data)
+                # Extract run_id for session tracking
+                session_info = data.get('session', {})
+                run_id = session_info.get('run_id', 'unknown')
+
+                # Update per-session state
+                if run_id not in sessions:
+                    sessions[run_id] = {'data': data, 'last_win_count': 0, 'last_seen': datetime.utcnow()}
+                    print(f"New session registered: run {run_id}")
+                else:
+                    sessions[run_id]['data'] = data
+                    sessions[run_id]['last_seen'] = datetime.utcnow()
+
+                # Check for new wins (per-session)
+                if data.get('results'):
+                    check_for_win(data, run_id)
+
+                # Broadcast multi_state to all subscribers
+                multi = build_multi_state()
+                broadcast_to_subscribers(multi)
+
                 # Log compactly
                 move = data.get('move', {})
                 board = data.get('board_state', '')
-                vertex = data.get('vertex_state', '')
                 edges = data.get('edges_colored', 0)
                 if move:
-                    print(f"Edge {edges}/15: E{move.get('edge')}{move.get('color')} board={board} vertex={vertex}")
+                    print(f"[run {run_id}] Edge {edges}/15: E{move.get('edge')}{move.get('color')} board={board}")
                 else:
-                    print(f"Stats update broadcast to {len(subscribers)} subscribers")
+                    print(f"[run {run_id}] Stats update ({len(sessions)} sessions, {len(subscribers)} subs)")
 
             if data.get('type') == 'move_update':
-                # Legacy support
-                last_move = data
+                # Legacy support - treat as unknown session
                 broadcast_to_subscribers(data)
                 move = data.get('move', {})
                 print(f"Move {move.get('number')}: E{move.get('edge')}{move.get('color')} -> {move.get('score', 0):+.3f}")
@@ -174,11 +206,9 @@ def subscribe(ws):
             'client_id': client_id
         }))
 
-        # Send last known state to new subscriber
-        if last_move:
-            ws.send(json.dumps(last_move))
-        if last_stats:
-            ws.send(json.dumps(last_stats))
+        # Send current multi-session state to new subscriber
+        if sessions:
+            ws.send(json.dumps(build_multi_state()))
 
         while True:
             message = ws.receive()
@@ -225,21 +255,21 @@ def send_slack_notification(title, message, color='#36a64f', details=None):
         print(f"Slack notification failed: {e}")
 
 
-def check_for_win(data):
-    """Check if new wins were recorded and send notification."""
-    global last_win_count
+def check_for_win(data, run_id):
+    """Check if new wins were recorded for a session and send notification."""
+    if run_id not in sessions:
+        return
 
+    session_state = sessions[run_id]
     results = data.get('results', {})
     current_wins = results.get('wins', 0)
 
-    if current_wins > last_win_count:
-        new_wins = current_wins - last_win_count
-        last_win_count = current_wins
+    if current_wins > session_state['last_win_count']:
+        new_wins = current_wins - session_state['last_win_count']
+        session_state['last_win_count'] = current_wins
 
         # Get additional context
         session = data.get('session', {})
-        move = data.get('move', {})
-        board_state = data.get('board_state', '')
 
         details = {
             'Run': session.get('run_id', '-'),
@@ -249,9 +279,9 @@ def check_for_win(data):
             'Opponent': session.get('opponent', '-'),
         }
 
-        message = f"🎉 Won {new_wins} game{'s' if new_wins > 1 else ''}!"
+        message = f"Won {new_wins} game{'s' if new_wins > 1 else ''}!"
         send_slack_notification(
-            title='🎯 Tangled Win Alert',
+            title='Tangled Win Alert',
             message=message,
             color='#36a64f',
             details=details
@@ -287,6 +317,7 @@ if __name__ == '__main__':
     print(f"Port: {port}")
     print(f"Debug: {debug}")
     print(f"API key: {PUBLISH_API_KEY[:8]}...")
+    print(f"Session timeout: {SESSION_TIMEOUT}s")
     print(f"Schema validation: {'enabled' if STATS_UPDATE_JSON_SCHEMA else 'disabled'}")
     print(f"Slack notifications: {'enabled' if TANGLED_GAME_SLACK_WEBHOOK_URL else 'disabled'}")
     print("=" * 50)
