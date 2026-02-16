@@ -84,7 +84,6 @@ def cleanup_stale_sessions():
 
 def build_multi_state():
     """Build a multi_state message from all active sessions."""
-    cleanup_stale_sessions()
     return {
         'type': 'multi_state',
         'server_timestamp': datetime.utcnow().isoformat() + 'Z',
@@ -102,7 +101,6 @@ def index():
 @app.route('/health')
 def health():
     """Health check for Fly.io."""
-    cleanup_stale_sessions()
     return {
         'status': 'ok',
         'subscribers': len(subscribers),
@@ -165,6 +163,10 @@ def publish(ws):
                 # Check for new wins (per-session)
                 if data.get('results'):
                     check_for_win(data, run_id)
+
+                # Clean up stale sessions only when new data arrives
+                # (not on reads, so last state persists when all publishers disconnect)
+                cleanup_stale_sessions()
 
                 # Broadcast multi_state to all subscribers
                 multi = build_multi_state()
